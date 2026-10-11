@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Galactic Defender - Pause & Exit Edition</title>
+    <title>Galactic Defender - Elite Edition</title>
     <style>
         * {
             box-sizing: border-box;
@@ -19,26 +19,27 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
+            width: 100vw;
+            height: 100vh;
             overflow: hidden;
             touch-action: none;
         }
         #game-container {
             position: relative;
-            width: 900px;
-            height: 600px;
+            width: 100vw;
+            height: 100vh;
+            max-width: 100vw;
+            max-height: 100vh;
             box-shadow: 0 0 70px rgba(0, 240, 255, 0.4);
-            border-radius: 16px;
             overflow: hidden;
             border: 2px solid rgba(0, 240, 255, 0.6);
             background: #000;
-            max-width: 100vw;
-            max-height: 100vh;
         }
         canvas {
             display: block;
             width: 100%;
             height: 100%;
+            object-fit: contain;
         }
         /* UI Overlay */
         .ui-screen {
@@ -134,7 +135,7 @@
             line-height: 1.6;
         }
 
-        /* Top Utility Controls (Pause & Exit) */
+        /* Top Utility Controls (Full Screen, Pause, Exit) */
         #top-utility-bar {
             position: absolute;
             top: 15px;
@@ -260,8 +261,9 @@
 <div id="game-container">
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Tombol Jeda & Keluar di Pojok Kanan Atas -->
+    <!-- Tombol Utilitas Pojok Kanan Atas (Full Screen, Jeda, Keluar) -->
     <div id="top-utility-bar">
+        <button class="util-btn" id="btn-fullscreen" title="Layar Penuh">⛶</button>
         <button class="util-btn" id="btn-pause" title="Jeda">⏸</button>
         <button class="util-btn" id="btn-exit" title="Keluar ke Menu">🏠</button>
     </div>
@@ -285,19 +287,19 @@
     <!-- Start Screen & Pilihan Kapal -->
     <div id="start-screen" class="ui-screen">
         <h1>Galactic Defender</h1>
-        <p>Pilih Kapal Tempur Andalan Anda:</p>
+        <p>Pilih Kapal Tempur Elite Anda:</p>
         <div class="ship-select-container">
             <div class="ship-card selected" onclick="selectShip('vanguard')" id="card-vanguard">
                 <h3>Vanguard</h3>
-                <span>Seimbang & Cepat</span>
+                <span>Seimbang & Gesit</span>
             </div>
             <div class="ship-card" onclick="selectShip('interceptor')" id="card-interceptor">
                 <h3>Interceptor</h3>
-                <span>Kecepatan Tinggi</span>
+                <span>Super Cepat</span>
             </div>
             <div class="ship-card" onclick="selectShip('titan')" id="card-titan">
                 <h3>Titan</h3>
-                <span>Nyawa 5 & Perisai</span>
+                <span>Armor Kuat (5 Nyawa)</span>
             </div>
         </div>
         <button class="btn" id="start-btn">MULAI MISI</button>
@@ -328,13 +330,13 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    canvas.width = 900;
-    canvas.height = 600;
+    canvas.width = 1280;
+    canvas.height = 720;
 
     let gameRunning = false;
     let isPaused = false;
     let score = 0;
-    let highScore = localStorage.getItem('gd_highscore_pause_exit') || 0;
+    let highScore = localStorage.getItem('gd_highscore_elite') || 0;
     let lives = 3;
     let level = 1;
     let levelNotificationTimer = 0;
@@ -349,6 +351,7 @@
     let shockwaves = [];
     let powerUps = [];
     let starShards = [];
+    let lightningFlashes = [];
     
     let backgroundLayers = {
         layer1: [],
@@ -359,19 +362,19 @@
     };
 
     function initBackground() {
-        for (let i = 0; i < 80; i++) {
+        for (let i = 0; i < 90; i++) {
             backgroundLayers.layer1.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: 1, speed: 0.3, alpha: Math.random() * 0.5 + 0.2 });
         }
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 60; i++) {
             backgroundLayers.layer2.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: 1.8, speed: 0.8, alpha: Math.random() * 0.7 + 0.3 });
         }
-        for (let i = 0; i < 25; i++) {
+        for (let i = 0; i < 30; i++) {
             backgroundLayers.layer3.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: 2.5, speed: 1.6, alpha: Math.random() * 0.9 + 0.5 });
         }
         backgroundLayers.nebulae = [
-            { x: 200, y: 150, radius: 220, color: 'rgba(120, 0, 200, 0.08)' },
-            { x: 700, y: 450, radius: 280, color: 'rgba(0, 150, 220, 0.07)' },
-            { x: 500, y: 200, radius: 180, color: 'rgba(220, 50, 120, 0.05)' }
+            { x: 300, y: 200, radius: 300, color: 'rgba(120, 0, 200, 0.08)' },
+            { x: 1000, y: 550, radius: 350, color: 'rgba(0, 150, 220, 0.07)' },
+            { x: 700, y: 250, radius: 250, color: 'rgba(220, 50, 120, 0.05)' }
         ];
     }
     initBackground();
@@ -439,6 +442,14 @@
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
                 osc.connect(gain); gain.connect(audioCtx.destination);
                 osc.start(now); osc.stop(now + 0.12);
+            } else if (typeSound === 'clash') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(900, now);
+                osc.frequency.exponentialRampToValueAtTime(300, now + 0.06);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 0.06);
             } else if (typeSound === 'hit') {
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(300, now);
@@ -499,11 +510,11 @@
     }
 
     const player = {
-        x: canvas.width - 140,
+        x: canvas.width - 180,
         y: canvas.height / 2 - 25,
-        width: 60,
-        height: 40,
-        speed: 6,
+        width: 70,
+        height: 45,
+        speed: 6.5,
         shield: false,
         shieldTime: 0,
         doubleShot: false,
@@ -512,43 +523,75 @@
             ctx.save();
             ctx.translate(this.x, this.y);
 
-            ctx.fillStyle = level >= 3 ? '#00ffff' : (level === 2 ? '#00ff88' : '#ff3300');
+            let flameLength = 20 + Math.random() * 15;
+            let flameColor = level >= 3 ? '#00ffff' : (level === 2 ? '#00ffaa' : '#ff5500');
+            ctx.fillStyle = flameColor;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = flameColor;
             ctx.beginPath();
-            ctx.moveTo(60, 15);
-            ctx.lineTo(75 + Math.random() * 10, 20);
-            ctx.lineTo(60, 25);
+            ctx.moveTo(0, 15);
+            ctx.lineTo(-flameLength, 22.5);
+            ctx.lineTo(0, 30);
             ctx.fill();
 
+            let primaryColor = '#101828';
+            let accentColor = '#00f0ff';
             if (selectedShipType === 'interceptor') {
-                ctx.fillStyle = '#00ffcc';
+                primaryColor = '#051c24';
+                accentColor = '#00ffbb';
             } else if (selectedShipType === 'titan') {
-                ctx.fillStyle = '#ffaa00';
-            } else {
-                ctx.fillStyle = level >= 3 ? '#ff00ff' : '#2a3a5e';
+                primaryColor = '#2a1a08';
+                accentColor = '#ffaa00';
             }
+            if (level >= 3) accentColor = '#ff00ff';
 
+            ctx.fillStyle = primaryColor;
+            ctx.strokeStyle = accentColor;
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(0, 20); ctx.lineTo(50, 0); ctx.lineTo(70, 5); ctx.lineTo(70, 35); ctx.lineTo(50, 40);
-            ctx.closePath(); ctx.fill();
-
-            ctx.fillStyle = '#00f0ff';
-            ctx.beginPath();
-            ctx.moveTo(40, 20); ctx.lineTo(65, -5); ctx.lineTo(55, 20); ctx.lineTo(65, 45);
-            ctx.closePath(); ctx.fill();
-
-            ctx.fillStyle = '#00ffff';
-            ctx.shadowColor = '#00ffff';
-            ctx.shadowBlur = 12;
-            ctx.beginPath();
-            ctx.ellipse(30, 20, 12, 5, 0, 0, Math.PI * 2);
+            ctx.moveTo(10, 22.5);
+            ctx.lineTo(55, 2);
+            ctx.lineTo(65, 12);
+            ctx.lineTo(35, 22.5);
+            ctx.closePath();
             ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(10, 22.5);
+            ctx.lineTo(55, 43);
+            ctx.lineTo(65, 33);
+            ctx.lineTo(35, 22.5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = primaryColor;
+            ctx.beginPath();
+            ctx.moveTo(5, 22.5);
+            ctx.lineTo(30, 10);
+            ctx.lineTo(70, 22.5);
+            ctx.lineTo(30, 35);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = accentColor;
+            ctx.shadowColor = accentColor;
+            ctx.shadowBlur = 14;
+            ctx.beginPath();
+            ctx.ellipse(38, 22.5, 14, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(52, 18, 12, 35);
 
             if (this.shield) {
                 ctx.strokeStyle = '#00ffff';
                 ctx.lineWidth = 3;
-                ctx.shadowBlur = 15;
+                ctx.shadowBlur = 20;
                 ctx.beginPath();
-                ctx.arc(35, 20, 35, 0, Math.PI * 2);
+                ctx.arc(35, 22.5, 38, 0, Math.PI * 2);
                 ctx.stroke();
             }
 
@@ -556,8 +599,8 @@
         },
         update() {
             let currentSpeed = this.speed;
-            if (selectedShipType === 'interceptor') currentSpeed = 7.5;
-            if (selectedShipType === 'titan') currentSpeed = 5;
+            if (selectedShipType === 'interceptor') currentSpeed = 8;
+            if (selectedShipType === 'titan') currentSpeed = 5.5;
 
             if (keys['ArrowUp'] || keys['KeyW']) if (this.y > 0) this.y -= currentSpeed;
             if (keys['ArrowDown'] || keys['KeyS']) if (this.y < canvas.height - this.height) this.y += currentSpeed;
@@ -617,6 +660,17 @@
     bindTouchButton('btn-bomb', '', triggerBomb);
     bindTouchButton('btn-pause', '', togglePause);
     bindTouchButton('btn-exit', '', returnToMenu);
+    bindTouchButton('btn-fullscreen', '', toggleFullScreen);
+
+    function toggleFullScreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {});
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    }
 
     function triggerBomb() {
         if (!gameRunning || isPaused || !bombAvailable) return;
@@ -628,7 +682,7 @@
             x: canvas.width / 2,
             y: canvas.height / 2,
             radius: 10,
-            maxRadius: 700,
+            maxRadius: 900,
             color: '#ffaa00',
             alpha: 1
         });
@@ -666,11 +720,11 @@
             playSound('shoot');
 
             if (selectedShipType === 'interceptor' || level >= 3 || player.doubleShot) {
-                bullets.push({ x: player.x, y: player.y + 2, speed: -14 });
-                bullets.push({ x: player.x, y: player.y + 20, speed: -14 });
-                bullets.push({ x: player.x, y: player.y + 38, speed: -14 });
+                bullets.push({ x: player.x, y: player.y + 5, speed: -16 });
+                bullets.push({ x: player.x, y: player.y + 22.5, speed: -16 });
+                bullets.push({ x: player.x, y: player.y + 40, speed: -16 });
             } else {
-                bullets.push({ x: player.x, y: player.y + 20, speed: -12 });
+                bullets.push({ x: player.x, y: player.y + 22.5, speed: -14 });
             }
 
             shootCooldown = Math.max(4, SHOOT_INTERVAL - (level * 1));
@@ -683,15 +737,15 @@
         if (!isPaused) {
             const randType = Math.random();
             let enemyType = 'scout';
-            let size = 35;
+            let size = 45;
             let hp = 1;
-            let speed = Math.random() * 2 + 2 + (score / 1200) + (level * 0.3);
+            let speed = Math.random() * 2 + 2.5 + (score / 1200) + (level * 0.3);
 
             if (score > 150 && randType < 0.35) {
                 enemyType = 'interceptor';
-                size = 30;
+                size = 40;
                 hp = 1;
-                speed += 1.5;
+                speed += 1.8;
             }
 
             enemies.push({
@@ -706,24 +760,24 @@
             });
         }
 
-        setTimeout(spawnEnemy, Math.max(400, 1500 - (score * 0.4) - (level * 50)));
+        setTimeout(spawnEnemy, Math.max(400, 1400 - (score * 0.4) - (level * 50)));
     }
 
     function createExplosion(x, y, isHeavy = false) {
         shockwaves.push({
             x: x, y: y,
             radius: 5,
-            maxRadius: isHeavy ? 60 : 25,
+            maxRadius: isHeavy ? 70 : 30,
             color: isHeavy ? '#ff3300' : '#00ffff',
             alpha: 1
         });
 
-        let particleCount = isHeavy ? 30 : 12;
+        let particleCount = isHeavy ? 35 : 14;
         for (let i = 0; i < particleCount; i++) {
             particles.push({
                 x: x, y: y,
-                vx: (Math.random() - 0.5) * (isHeavy ? 14 : 7),
-                vy: (Math.random() - 0.5) * (isHeavy ? 14 : 7),
+                vx: (Math.random() - 0.5) * (isHeavy ? 15 : 8),
+                vy: (Math.random() - 0.5) * (isHeavy ? 15 : 8),
                 size: Math.random() * 4 + 2,
                 color: Math.random() > 0.5 ? '#ffaa00' : (Math.random() > 0.5 ? '#ff3300' : '#ffff00'),
                 life: 25 + Math.random() * 15
@@ -731,10 +785,19 @@
         }
     }
 
+    function createLightningFlash(x, y) {
+        playSound('clash');
+        lightningFlashes.push({
+            x: x,
+            y: y,
+            radius: 20 + Math.random() * 10,
+            life: 8
+        });
+    }
+
     function gameLoop() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 1. Latar Belakang & Parallax
         ctx.fillStyle = '#010103';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -771,13 +834,12 @@
             ctx.fillRect(star.x, star.y, star.size, star.size);
         });
 
-        // Komet / Bintang Jatuh
-        if (!isPaused && Math.random() < 0.04 && backgroundLayers.shootingStars.length < 5) {
+        if (!isPaused && Math.random() < 0.04 && backgroundLayers.shootingStars.length < 6) {
             backgroundLayers.shootingStars.push({
                 x: Math.random() * canvas.width,
                 y: Math.random() * (canvas.height * 0.7),
-                length: Math.random() * 90 + 50,
-                speedX: Math.random() * 8 + 6,
+                length: Math.random() * 100 + 60,
+                speedX: Math.random() * 9 + 7,
                 speedY: (Math.random() - 0.3) * 5,
                 alpha: Math.random() * 0.5 + 0.3
             });
@@ -817,20 +879,36 @@
             }
             player.draw();
 
-            // Bullets Pemain
+            if (!isPaused) {
+                for (let i = bullets.length - 1; i >= 0; i--) {
+                    for (let j = enemyBullets.length - 1; j >= 0; j--) {
+                        let b = bullets[i];
+                        let eb = enemyBullets[j];
+                        if (b && eb) {
+                            let distBullets = Math.hypot(b.x - eb.x, b.y - eb.y);
+                            if (distBullets < 16) {
+                                createLightningFlash((b.x + eb.x) / 2, (b.y + eb.y) / 2);
+                                bullets.splice(i, 1);
+                                enemyBullets.splice(j, 1);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
             bullets.forEach((b, index) => {
-                if (!isPaused) b.x += b.speed;
+                if (!isPaused) b.x -= 16;
                 ctx.fillStyle = level >= 3 ? '#ff00ff' : '#00ffff';
                 ctx.shadowBlur = 8;
                 ctx.shadowColor = ctx.fillStyle;
-                ctx.fillRect(b.x, b.y - 2, 12, 4);
+                ctx.fillRect(b.x, b.y - 2, 14, 4);
                 ctx.shadowBlur = 0;
                 if (b.x < 0) bullets.splice(index, 1);
             });
 
-            // Peluru Musuh
             enemyBullets.forEach((eb, index) => {
-                if (!isPaused) eb.x += eb.speed;
+                if (!isPaused) eb.x += 10;
                 ctx.fillStyle = '#ff3333';
                 ctx.shadowBlur = 8;
                 ctx.shadowColor = '#ff3333';
@@ -838,8 +916,8 @@
                 ctx.shadowBlur = 0;
 
                 if (!isPaused) {
-                    const distPlayerEb = Math.hypot(player.x + 30 - eb.x, player.y + 20 - eb.y);
-                    if (distPlayerEb < 25) {
+                    const distPlayerEb = Math.hypot(player.x + 35 - eb.x, player.y + 22.5 - eb.y);
+                    if (distPlayerEb < 28) {
                         enemyBullets.splice(index, 1);
                         createExplosion(eb.x, eb.y, false);
                         if (player.shield) {
@@ -858,7 +936,6 @@
                 if (eb.x > canvas.width + 20) enemyBullets.splice(index, 1);
             });
 
-            // Musuh
             enemies.forEach((e, eIdx) => {
                 if (!isPaused) {
                     e.x += e.speed;
@@ -867,38 +944,52 @@
                         e.y += Math.sin(e.angle) * 3;
                     }
 
-                    if (e.type === 'interceptor') {
-                        e.shootTimer++;
-                        if (e.shootTimer >= 100 && e.x > 80) {
-                            e.shootTimer = 0;
-                            playSound('enemyshoot');
-                            enemyBullets.push({ x: e.x + e.size / 2, y: e.y, speed: 9 });
-                        }
+                    e.shootTimer++;
+                    if (e.shootTimer >= 70 && e.x > 50 && e.x < player.x - 20) {
+                        e.shootTimer = 0;
+                        playSound('enemyshoot');
+                        enemyBullets.push({ x: e.x + e.size / 2, y: e.y, speed: 10 });
                     }
                 }
 
-                // Render Visual Musuh
                 ctx.save();
                 ctx.translate(e.x, e.y);
+
                 if (e.type === 'interceptor') {
-                    ctx.fillStyle = '#cc0033';
+                    ctx.fillStyle = '#1a0508';
+                    ctx.strokeStyle = '#ff1144';
+                    ctx.lineWidth = 2;
                     ctx.shadowBlur = 12;
-                    ctx.shadowColor = '#ff2255';
+                    ctx.shadowColor = '#ff1144';
+
                     ctx.beginPath();
-                    ctx.moveTo(28, 0); ctx.lineTo(-15, -18); ctx.lineTo(-5, -5); ctx.lineTo(-20, 0); ctx.lineTo(-5, 5); ctx.lineTo(-15, 18);
-                    ctx.closePath(); ctx.fill();
+                    ctx.moveTo(-15, -18); ctx.lineTo(15, -8); ctx.lineTo(25, 0); ctx.lineTo(15, 8); ctx.lineTo(-15, 18); ctx.lineTo(-5, 0);
+                    ctx.closePath(); ctx.fill(); ctx.stroke();
+
+                    ctx.fillStyle = '#ff3355';
+                    ctx.beginPath();
+                    ctx.ellipse(8, 0, 6, 3, 0, 0, Math.PI * 2);
+                    ctx.fill();
                 } else {
-                    ctx.fillStyle = '#cc8800';
-                    ctx.shadowBlur = 10;
+                    ctx.fillStyle = '#1c1505';
+                    ctx.strokeStyle = '#ffaa00';
+                    ctx.lineWidth = 2;
+                    ctx.shadowBlur = 12;
                     ctx.shadowColor = '#ffaa00';
+
                     ctx.beginPath();
-                    ctx.moveTo(22, 0); ctx.lineTo(-12, -14); ctx.lineTo(-5, -4); ctx.lineTo(-15, 0); ctx.lineTo(-5, 4); ctx.lineTo(-12, 14);
-                    ctx.closePath(); ctx.fill();
+                    ctx.moveTo(-20, -14); ctx.lineTo(15, -16); ctx.lineTo(30, 0); ctx.lineTo(15, 16); ctx.lineTo(-20, 14); ctx.lineTo(-10, 0);
+                    ctx.closePath(); ctx.fill(); ctx.stroke();
+
+                    ctx.fillStyle = '#ffbb00';
+                    ctx.beginPath();
+                    ctx.ellipse(10, 0, 7, 3, 0, 0, Math.PI * 2);
+                    ctx.fill();
                 }
+
                 ctx.restore();
 
                 if (!isPaused) {
-                    // Tabrakan Peluru Pemain dengan Musuh
                     bullets.forEach((b, bIdx) => {
                         const dist = Math.hypot(b.x - e.x, b.y - e.y);
                         if (dist < e.size / 2) {
@@ -917,13 +1008,13 @@
                                     powerUps.push({ x: e.x, y: e.y, type: Math.random() > 0.5 ? 'shield' : 'double' });
                                 }
                                 if (Math.random() < 0.15) {
-                                    starShards.push({ x: e.x, y: e.y, size: 12 });
+                                    starShards.push({ x: e.x, y: e.y, size: 14 });
                                 }
                             }
                         }
                     });
 
-                    const distPlayer = Math.hypot(player.x + 30 - e.x, player.y + 20 - e.y);
+                    const distPlayer = Math.hypot(player.x + 35 - e.x, player.y + 22.5 - e.y);
                     if (distPlayer < e.size / 2 + 20) {
                         enemies.splice(eIdx, 1);
                         playSound('explosion');
@@ -944,15 +1035,14 @@
                 if (e.x > canvas.width + e.size) enemies.splice(eIdx, 1);
             });
 
-            // Power-ups
             powerUps.forEach((p, pIdx) => {
                 if (!isPaused) p.x += 2;
                 ctx.fillStyle = p.type === 'shield' ? '#00ffff' : '#ff00ff';
-                ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(p.x, p.y, 11, 0, Math.PI * 2); ctx.fill();
 
                 if (!isPaused) {
-                    const dist = Math.hypot(player.x + 30 - p.x, player.y + 20 - p.y);
-                    if (dist < 30) {
+                    const dist = Math.hypot(player.x + 35 - p.x, player.y + 22.5 - p.y);
+                    if (dist < 32) {
                         playSound('powerup');
                         if (p.type === 'shield') { player.shield = true; player.shieldTime = 300; }
                         else { player.doubleShot = true; player.doubleShotTime = 300; }
@@ -961,7 +1051,6 @@
                 }
             });
 
-            // Star Shards
             starShards.forEach((shard, sIdx) => {
                 if (!isPaused) shard.x += 1.5;
                 ctx.save();
@@ -978,7 +1067,7 @@
                 ctx.restore();
 
                 if (!isPaused) {
-                    const distShard = Math.hypot(player.x + 30 - shard.x, player.y + 20 - shard.y);
+                    const distShard = Math.hypot(player.x + 35 - shard.x, player.y + 22.5 - shard.y);
                     if (distShard < 35) {
                         playSound('extralife');
                         if (lives < 5) lives++;
@@ -988,11 +1077,36 @@
                 if (shard.x > canvas.width + 20) starShards.splice(sIdx, 1);
             });
 
-            // Shockwaves
+            lightningFlashes.forEach((lf, idx) => {
+                if (!isPaused) lf.life--;
+                ctx.save();
+                ctx.strokeStyle = '#00ffff';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.shadowColor = '#00ffff';
+                ctx.shadowBlur = 15;
+
+                ctx.beginPath();
+                ctx.moveTo(lf.x, lf.y);
+                for (let k = 0; k < 4; k++) {
+                    let rx = lf.x + (Math.random() - 0.5) * lf.radius * 2;
+                    let ry = lf.y + (Math.random() - 0.5) * lf.radius * 2;
+                    ctx.lineTo(rx, ry);
+                }
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(lf.x, lf.y, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                if (lf.life <= 0) lightningFlashes.splice(idx, 1);
+            });
+
             shockwaves.forEach((sw, idx) => {
                 if (!isPaused) {
-                    sw.radius += 3.5;
-                    sw.alpha -= 0.04;
+                    sw.radius += 4;
+                    sw.alpha -= 0.035;
                 }
                 ctx.save();
                 ctx.strokeStyle = sw.color;
@@ -1004,7 +1118,6 @@
                 if (sw.alpha <= 0 || sw.radius >= sw.maxRadius) shockwaves.splice(idx, 1);
             });
 
-            // Particles
             particles.forEach((p, pIdx) => {
                 if (!isPaused) {
                     p.x += p.vx; p.y += p.vy; p.life--;
@@ -1015,22 +1128,22 @@
 
             // HUD
             ctx.fillStyle = '#ffffff';
-            ctx.font = '16px Segoe UI';
-            ctx.fillText(`SKOR: ${score}`, 20, 30);
-            ctx.fillText(`SKOR TERTINGGI: ${highScore}`, 20, 55);
-            ctx.fillText(`LEVEL: ${level}`, 20, 80);
-            ctx.fillText(`BOM SPESIAL: ${bombAvailable ? '💣 SIAP (Tekan B)' : 'HABIS'}`, 20, 105);
-            ctx.fillText(`NYAWA: ${'❤️'.repeat(lives)}`, canvas.width - 240, 30);
+            ctx.font = '14px Segoe UI';
+            ctx.fillText(`SKOR: ${score}`, 25, 30);
+            ctx.fillText(`SKOR TERTINGGI: ${highScore}`, 25, 55);
+            ctx.fillText(`LEVEL: ${level}`, 25, 80);
+            ctx.fillText(`BOM SPESIAL: ${bombAvailable ? '💣 SIAP (Tekan B)' : 'HABIS'}`, 25, 105);
+            ctx.fillText(`NYAWA: ${'❤️'.repeat(lives)}`, canvas.width - 220, 30);
 
             if (!isPaused && levelNotificationTimer > 0) {
                 levelNotificationTimer--;
                 ctx.save();
-                ctx.font = 'bold 28px Segoe UI';
+                ctx.font = 'bold 22px Segoe UI';
                 ctx.fillStyle = '#00ffff';
                 ctx.shadowColor = '#00ffff';
-                ctx.shadowBlur = 15;
+                ctx.shadowBlur = 10;
                 ctx.textAlign = 'center';
-                ctx.fillText(`LEVEL ${level} EVOLUSI KAPAL TERCAPAI!`, canvas.width / 2, 100);
+                ctx.fillText(`LEVEL ${level} EVOLUSI KAPAL TERCAPAI!`, canvas.width / 2, 70);
                 ctx.restore();
             }
         }
@@ -1057,9 +1170,10 @@
         shockwaves = [];
         powerUps = [];
         starShards = [];
+        lightningFlashes = [];
         backgroundLayers.shootingStars = [];
-        player.x = canvas.width - 140;
-        player.y = canvas.height / 2 - 20;
+        player.x = canvas.width - 180;
+        player.y = canvas.height / 2 - 25;
         gameRunning = true;
 
         document.getElementById('start-screen').classList.add('hidden');
@@ -1074,7 +1188,7 @@
         stopBGM();
         if (score > highScore) {
             highScore = score;
-            localStorage.setItem('gd_highscore_pause_exit', highScore);
+            localStorage.setItem('gd_highscore_elite', highScore);
         }
         document.getElementById('final-score').innerText = `Skor Akhir Anda: ${score} (Mencapai Level ${level})`;
         document.getElementById('gameover-screen').classList.remove('hidden');
